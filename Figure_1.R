@@ -24,15 +24,21 @@ total <- total %>% filter(Location != "Unclear")
 
 ## Statistics ----
 
-## raw lifetimes not accounting for right-censoring of data
+# Summarize Lifetime data by experiment and specified additional column
+mean_lifetime_by_experiment <- function(total_data, by_column) {
+  total_data %>% 
+    group_by(Culture, {{by_column}}) %>% 
+    mutate(Lifetime_trans = 1/Lifetime) %>%  # to adjust for right-skewed data
+    summarise(Lifetime = mean(Lifetime_trans)) %>% 
+    ungroup()
+}
 
-## A) Genotype
-# Median lifetime per experiment
-genotype_exp <- total %>% 
-  group_by(Culture, Genotype) %>% 
-  mutate(Lifetime_trans = 1/Lifetime) %>%  # to adjust for right-skewed data
-  summarise(Lifetime = mean(Lifetime_trans)) %>% 
-  ungroup()
+
+## raw lifetimes not accounting for right-censoring of data --
+
+## A) Genotype --
+# Mean lifetime per experiment
+genotype_exp <- mean_lifetime_by_experiment(total, Genotype)
 
 
 # Testing model assumptions
@@ -46,12 +52,8 @@ m0_genotype <- compare_means(Lifetime ~ Genotype,
 
 
 
-## Location
-location_exp <- total %>% 
-  group_by(Culture, Location) %>% 
-  mutate(Lifetime_trans = 1/Lifetime) %>%  # to adjust for right-skewed data
-  summarise(Lifetime = mean(Lifetime_trans)) %>% 
-  ungroup()
+## E) Location --
+location_exp <- mean_lifetime_by_experiment(total, Location)
 
 
 # Testing model assumptions
@@ -61,16 +63,12 @@ autoplot(m0_loc, which = 1:4, ncol = 2, label.size = 3, colour = "Location")
 
 # Testing with Wilcox test (non-normality & non-equal variances)
 m0_location <- compare_means(Lifetime ~ Location, 
-                               data = location_exp, method = "wilcox.test")
+                               data = location_exp, method = "t.test")
 
 
 
-## Branchtype
-branchtype_exp <- total %>% 
-  group_by(Culture, Branchtype) %>% 
-  mutate(Lifetime_trans = 1/Lifetime) %>%  # to adjust for right-skewed data
-  summarise(Lifetime = mean(Lifetime_trans)) %>% 
-  ungroup()
+## I) Branchtype --
+branchtype_exp <- mean_lifetime_by_experiment(total, Branchtype)
 
 
 # Testing model assumptions
@@ -88,7 +86,7 @@ m0_branchtype <- compare_means(Lifetime ~ Branchtype,
 
 ### Survival analysis
 
-## Genotype
+## c) Genotype --
 m_genotype <-  coxph(Surv(Lifetime, CompleteData) ~ Genotype,
                    weights = Prob,
                     #cluster = Culture,
@@ -102,7 +100,8 @@ survminer::ggcoxdiagnostics(m_genotype, type = "deviance", linear.predictions = 
 tidy(m_genotype, exponentiate = T)
 
 
-## Location
+
+## G) Location --
 m_location <-  coxph(Surv(Lifetime, CompleteData) ~ Location ,
                      weights = Prob,
                      data = total)
@@ -117,7 +116,8 @@ survminer::ggcoxdiagnostics(m_location, type = "deviance", linear.predictions = 
 tidy(m_location, exponentiate = T)
 
 
-## Branchtype
+
+## K) Branchtype --
 m_branchtype <-  coxph(Surv(Lifetime, CompleteData) ~ Branchtype,
                       weights = Prob,
                       data = total)
@@ -144,7 +144,10 @@ Branchtheme <- theme_minimal() +
 
 
 
-## Colors
+## Colors from scico-package --
+# Crameri, F. (2018). Scientific colour maps. Zenodo. 
+# http://doi.org/10.5281/zenodo.1243862
+
 # for Genotype & Location
 sci_pal = "batlow"
 
@@ -154,57 +157,60 @@ sci_pal2 <- "roma"
 
 
 
-## Plotting functions
+## custom plotting functions --
+# Lifetime beeswarm superplot 
+# Lord, SL et al. (2020) SuperPlots: Communicating reproducibility and variability in cell biology. 
+# J Cell Biol 1 June 2020; doi: https://doi.org/10.1083/jcb.202001064)
+
 lifetime_swarm <- function(per_exp, total, X_axis) {
   ggplot(per_exp, aes(x = {{X_axis}}, y = 1/Lifetime, color = {{X_axis}})) +  # 1/Lifetime to reverse normalization for stats
   geom_point() + 
-  #geom_line(aes(group = Culture), color = "black") + 
+
   stat_summary(fun = mean, geom = "crossbar", color = "black", width = 0.6, size = 0.3) + 
   stat_summary(fun.data = "mean_se", geom = "errorbar", color = "black", width = 0.4, size = 0.3) + 
     
   geom_quasirandom(aes(y = Lifetime), data = {{total}}, alpha = 0.01, shape = 16) + # non-collapsing
   Branchtheme + theme(panel.grid.major.x = element_blank(), 
-                      #axis.text.x = element_blank()
   ) + 
+  
   scale_y_continuous(breaks = c(0, 6, 12, 18, 24), 
                          labels = c("0 h", "6 h", "12 h", "18 h", "24 h")) +
     
   labs(
-    #title = "Lppr3-/- branches seem to be slightly destabilized",
-    #subtitle = "",
     x = "",
     y = "Lifetime per branch"
-    #caption = "WT cells DIV2-3 (n=6)"
   )
   }
 
+
+# Scatterplot highlighting each indiviual branch event, colored by specified column
 lifetime_scatter <- function(total, Group) {
   ggplot({{total}}, aes(x = Collapse, y = Formation, color = {{Group}})) + 
   geom_point(alpha = 0.1, shape = 16) + 
+  
   Branchtheme +
   labs(
-    #title = "Most of the branches do not collapse during measurement",
-    #subtitle = "",
     x = "Timepoint of Collapse",
     y = "Timepoint of Formation"
-    #caption = "\nWT vs Lppr3-KO cells DIV2-3 (n=6)"
   ) +
+    
   scale_x_continuous(breaks = c(0, 6, 12, 18, 24), 
                        labels = c("0 h", "6 h", "12 h", "18 h", "24 h")) +
   scale_y_continuous(breaks = c(0, 6, 12, 18, 24), 
-                     labels = c("0 h", "6 h", "12 h", "18 h", "24 h")) #+
-  #coord_fixed()
+                     labels = c("0 h", "6 h", "12 h", "18 h", "24 h"))
 }
 
 
 
-## Survival plotting with CI
+## Survival curve with CI
 survival_CI <- function(data) {
   ggplot(data = {{data}}, aes(x = time, color = set, fill = set)) + 
+    
     geom_step(aes(y = estimate), size = 1) +
     geom_ribbon(aes(ymin = conf.low, ymax = conf.high), alpha = 0.3, color = NA) +   
+    
     Branchtheme +
-    #geom_point(aes(y = n.censor)) +
+    
     scale_y_continuous(labels = scales::percent, 
                        limits = c(0,1),
                        #expand = expansion(mult = c(0.01, 0.1))
@@ -224,7 +230,7 @@ survival_CI <- function(data) {
 
 ## A: WT vs. KO -----
 
-# false lifetime plot
+# lifetime beeswarm
 
 A1 <- lifetime_swarm(genotype_exp, total, Genotype) +
   
@@ -244,7 +250,7 @@ A2 <- lifetime_scatter(total, Genotype) +
 
 
 
-#A3c: CoxPH + CIst
+#A3c: CoxPH + Confidence intervals
 df_Genotype  <- data.frame(Genotype = factor(c("WT", "KO"), levels=levels(total$Genotype)))
 
 CI_genotype <- tidy(survfit(m_genotype, newdata=df_Genotype)) %>% 
@@ -308,18 +314,6 @@ CI_location <- tidy(survfit(m_location, newdata=df_Location)) %>%
 (C2 <- lifetime_scatter(total, Branchtype) +
   #scale_color_viridis_d()
   scale_color_scico_d(palette = sci_pal2, begin = 0, end = 1))
-
-# # Survival curve
-# (C3 <-  lifetime_survival(total, Branchtype)+
-#   #labs(title = "branches might collapse faster in the KO-group?") + 
-#   #scale_color_viridis_d() + scale_fill_viridis_d()
-#   scale_color_scico_d(palette = sci_pal2, begin = 0, end = 1) + 
-#   scale_fill_scico_d(palette = sci_pal2, begin = 0, end = 1)
-#   )
-# 
-# (C3b <- lifetime_adjusted(m_branchtype, "Branchtype") +
-#     scale_color_scico_d(palette = sci_pal2, begin = 0, end = 1) + 
-#     scale_fill_scico_d(palette = sci_pal2, begin = 0, end = 1))
 
 
 #B3c: CoxPH + CIst

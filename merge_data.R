@@ -1,5 +1,6 @@
 merge_data <- function() {
 
+  library(tidyverse)
 
 ## Individual branchpoints ----
 # list all folders
@@ -22,12 +23,7 @@ for (folder in dirs) {
 
 ## clean individual branch points
 all_cells_clean <- all_cells %>%
-  extract(Movie_ID, into = c("Imaging_ID", "Movie"), regex = "data/(.+)/lifetimes/(.+).csv") %>% 
-  mutate(Branchtype = fct_recode(Color, 
-                            "Filopodium" = "red", 
-                            "Mixed" = "yellow",
-                            "Lamellipodium" = "green", 
-                            "Splitting" = "blue"))
+  extract(Movie_ID, into = c("Imaging_ID", "Movie"), regex = "data/(.+)/lifetimes/(.+).csv") 
 
 
 

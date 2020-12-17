@@ -9,7 +9,7 @@ cells <-  read_csv2(file.path("data", "Cells.csv"))
 
 
 ## Cells ----
-# Calculate total neuron number
+# Calculate total cell number
 cells <- cells %>% 
   mutate("Neurons" = Cells_polarized + Cells_unpolarized + Cells_Other)
 
@@ -63,6 +63,11 @@ total <- total %>% mutate(Prob = 1 / (max(Collapse) - Formation))
 # Set factor levels
 total <- total %>% 
   mutate(
+    Branchtype = fct_recode(Color, 
+                                 "Filopodium" = "red", 
+                                 "Mixed" = "yellow",
+                                 "Lamellipodium" = "green", 
+                                 "Splitting" = "blue"),
     Branchtype = factor(Branchtype, 
                         levels = c("Filopodium", "Mixed", "Lamellipodium", "Splitting")),
     Location   = factor(Location,
