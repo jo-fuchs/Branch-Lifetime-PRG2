@@ -1,9 +1,7 @@
 ## Figure 1 ----
 
 library(tidyverse)
-library(multcomp)
 library(survival)
-library(coxme)
 library(broom)
 library(ggfortify)
 
@@ -18,7 +16,6 @@ source("clean_data.R")
 
 # load data
 total <- clean_data()
-total <- total %>% filter(Location != "Unclear")
 
 
 
@@ -63,7 +60,7 @@ autoplot(m0_loc, which = 1:4, ncol = 2, label.size = 3, colour = "Location")
 
 # Testing with Wilcox test (non-normality & non-equal variances)
 m0_location <- compare_means(Lifetime ~ Location, 
-                               data = location_exp, method = "t.test")
+                               data = filter(location_exp, Location != "Unclear"), method = "t.test")
 
 
 
