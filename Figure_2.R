@@ -1,10 +1,10 @@
 # Figure 2
 
 library(tidyverse)
-library(multcomp)
 library(survival)
 library(coxme)
 library(broom)
+library(ggfortify)
 
 library(ggbeeswarm)
 library(scico)
@@ -18,8 +18,7 @@ source("cumulative_branches.R")
 
 # load data
 total <- clean_data()
-total_filt <- total %>% filter(Location != "Unclear")
-#total_df <- as.data.frame(total_filt) # survminer can't handle tibbles
+#total_filt <- total %>% filter(Location != "Unclear")
 
 
 ## Statistics ----
@@ -36,7 +35,7 @@ count_exp <- total %>%
 
 # Testing model assumptions
 m0_comb <- aov(norm_events ~ Genotype, data = count_exp)
-autoplot(m0_comb, which = 1:6, ncol = 2, label.size = 3, color = Genotype)
+autoplot(m0_comb, which = 1:4, ncol = 2, label.size = 3, color = Genotype)
 
 
 # Welchs's t-test 
@@ -45,11 +44,31 @@ m0_combined <- compare_means(norm_events ~ Genotype, group.by = "Branchtype",
 
 
 
+
 ## Survival analysis
 m_combined <- coxph(Surv(Lifetime, CompleteData) ~ 
+                      Branchtype + Location + Genotype,
+                    weights = Prob,
+                    data = total)
+
+m_combined_interaction <- coxph(Surv(Lifetime, CompleteData) ~ 
                       Branchtype * Location + Genotype,
                     weights = Prob,
                     data = total)
+
+# mixed effect version
+me_combined <- coxme(Surv(Lifetime, CompleteData) ~ 
+                      Branchtype + Location + Genotype + (1|Culture),
+                    weights = Prob,
+                    data = total)
+
+
+
+# no interaction terms required
+anova(m_combined, m_combined_interaction)
+
+# mixed effects model a better fit
+anova(m_combined, me_combined)
 
 # Diagnostics
 diag_surv_combined<- cox.zph(m_combined)
@@ -59,23 +78,10 @@ survminer::ggcoxdiagnostics(m_combined, type = "deviance", linear.predictions = 
 # Results table
 tidy(m_combined, exponentiate = T)
 
-
-
-m_combined3 <- coxph(Surv(Lifetime, CompleteData) ~ 
-                      Branchtype * Location + Genotype + cluster(Culture),
-                    weights = Prob,
-                    data = total)
-
-tidy(m_combined3, exponentiate = T)
-
-
-# Mixed coxph does not converge.. 
-me_combined <- coxme(Surv(Lifetime, CompleteData) ~ 
-                      Branchtype * Location + Genotype + (1|Culture),
-                    weights = Prob,
-                    data = total)
-
+# results do not change with mixed model
 summary(me_combined)
+
+
 
 
 ## Plotting setup ----
@@ -228,14 +234,14 @@ survival_CI(CI_AxFil) +
 
 ### Plotting ----
 
-# A) Cumulative events by type & Location
-Cumulative <- cumulative_branches(total_filt)
+# A) Cumulative events by type & Location (excluding "unclear")
+Cumulative <- cumulative_branches(total)
 
-(A0 <- formations_plot(Cumulative)+
+(A0 <- formations_plot(filter(Cumulative, Location != "Unclear"))+
     scale_color_scico_d(palette = sci_pal2, begin = 0, end = 1) + 
     scale_fill_scico_d(palette = sci_pal2, begin = 0, end = 1))
 
-(A <- cumulative_plot(Cumulative) +
+(A <- cumulative_plot(filter(Cumulative, Location != "Unclear")) +
     scale_color_scico_d(palette = sci_pal2, begin = 0, end = 1) + 
     scale_fill_scico_d(palette = sci_pal2, begin = 0, end = 1))
 
@@ -251,8 +257,6 @@ B <- events_scatter(count_exp) +
 
 
 # C) DAG 
-C <- ggdraw() + draw_image(file.path("figures", "figure_2","combined_DAG.png"), scale = 0.85)
-
 C_up <- ggdraw() + draw_image(file.path("figures", "figure_2","combined_DAG_vert.png"), scale = 0.7)
 
 
@@ -270,6 +274,7 @@ NeuSpl <- CI_data("Neurite", "Splitting") +
             theme(legend.position = c(0.85, 0.9), legend.direction = "vertical",
             legend.key.size = unit(10, "pt"))
 
+
 # combine to one facet using cowplot
 D1 <- plot_grid(AxFil, AxMix, AxLam, AxSpl, scale = 1, 
                nrow = 1, align = "h", axis = "bt", rel_widths = c(1.15, 1,1,1))
@@ -279,37 +284,27 @@ D2 <- plot_grid(NeuFil, NeuMix, NeuLam, NeuSpl, scale = 1,
 
 
 D <- plot_grid(D1, D2, nrow = 2, align = "v", axis = "bt", rel_heights = c(1.1,1)) 
-# legend, Axon/Neurite
-D
 
 
 
 ## Merge into final figure
-
-right <- plot_grid(B, C, nrow = 2, rel_heights = c(2,1), labels = c("B", "C")) 
-
-top <- plot_grid(A, right, ncol = 2,  rel_widths = c(1.05, 1), scale = 0.98) 
+top <- plot_grid(A0, A, ncol = 2, labels = c("A", "B"))
+mid <- plot_grid(B, C_up, ncol = 2, labels = c("C", "D"), rel_widths = c(1.5,1))
 
 spacer <- ggplot() + Branchtheme
 
-Fig_2 <- plot_grid(top, spacer, D, nrow = 3, labels = c("A", "", "D"), rel_heights = c(1.1,0.05, 1)) 
+Fig_2 <- plot_grid(top, mid, spacer, D, nrow = 4, labels = c("", "", "E"), rel_heights = c(1.1,1, 0.05, 1)) 
 
 
 
-ggsave(file.path("figures", "figure_2", "Fig_2.png"), Fig_2, device = "png", scale = 1, width = 210, height = 200, units = "mm" )
-
-ggsave(file.path("figures", "figure_2", "Fig_2.pdf"), Fig_2, device = "pdf", scale = 1, width = 210, height = 210, units = "mm" )
-
-
-## second option
-
-top0 <- plot_grid(A0, A, ncol = 2, labels = c("A", "B"))
-mid <- plot_grid(B, C_up, ncol = 2, labels = c("C", "D"), rel_widths = c(1.5,1))
-
-
-Fig_2b <- plot_grid(top0, mid, spacer, D, nrow = 4, labels = c("", "", "E"), rel_heights = c(1.1,1, 0.05, 1)) 
+ggsave(file.path("figures", "figure_2", "Fig_2.png"), Fig_2, device = "png", scale = 1, width = 210, height = 240, units = "mm" )
 
 
 
-ggsave(file.path("figures", "figure_2", "Fig_2b.png"), Fig_2b, device = "png", scale = 1, width = 210, height = 240, units = "mm" )
+
+## Forestplot of final model
+forest <- survminer::ggforest(m_combined, data = total)
+ggsave(file.path("figures", "supplement", "Sup_3.png"), forest, device = "png", scale = 1, width = 210, height = 140, units = "mm" )
+
+
 
