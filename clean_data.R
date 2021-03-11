@@ -72,8 +72,12 @@ total <- total %>%
                         levels = c("Filopodium", "Mixed", "Lamellipodium", "Splitting")),
     Location   = factor(Location,
                         levels = c("Axon", "Neurite", "Unclear")),
+    Genotype   = fct_recode(Genotype,
+                        "Plppr3 +/+" = "WT", 
+                        "Plppr3 -/-" = "KO"),
+    
     Genotype   = factor(Genotype,
-                        levels = c("WT", "KO")),
+                        levels = c("Plppr3 +/+", "Plppr3 -/-")),
     Culture    = factor(Culture,
                         levels = c("A", "B", "C", "D", "E", "F"))
     

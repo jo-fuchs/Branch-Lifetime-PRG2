@@ -58,7 +58,7 @@ m0_loc <- aov(Lifetime ~ Location, data = location_exp)
 autoplot(m0_loc, which = 1:4, ncol = 2, label.size = 3, colour = "Location")
 
 
-# Testing with Wilcox test (non-normality & non-equal variances)
+# Testing with Welch's test (non-equal variances)
 m0_location <- compare_means(Lifetime ~ Location, 
                                data = filter(location_exp, Location != "Unclear"), method = "t.test")
 
@@ -86,8 +86,8 @@ m0_branchtype <- compare_means(Lifetime ~ Branchtype,
 ## c) Genotype --
 m_genotype <-  coxph(Surv(Lifetime, CompleteData) ~ Genotype,
                    weights = Prob,
-                    #cluster = Culture,
                      data = total)
+
 # Diagnostics
 diag_surv_genotype<- cox.zph(m_genotype)
 survminer::ggcoxzph(diag_surv_genotype) # Schoenfeld test
@@ -240,7 +240,6 @@ A1 <- lifetime_swarm(genotype_exp, total, Genotype) +
 
 # total overview axon vs. dendrite by Branchtypes and Genotype
 A2 <- lifetime_scatter(total, Genotype) +
-  #scale_color_viridis_d()
   scale_color_scico_d(palette = sci_pal, begin = 0, end = 0.7)
 
 
@@ -248,7 +247,7 @@ A2 <- lifetime_scatter(total, Genotype) +
 
 
 #A3c: CoxPH + Confidence intervals
-df_Genotype  <- data.frame(Genotype = factor(c("WT", "KO"), levels=levels(total$Genotype)))
+df_Genotype  <- data.frame(Genotype = factor(c("Plppr3 +/+", "Plppr3 -/-"), levels=levels(total$Genotype)))
 
 CI_genotype <- tidy(survfit(m_genotype, newdata=df_Genotype)) %>% 
   pivot_longer(!time:n.censor,
@@ -273,7 +272,6 @@ CI_genotype <- tidy(survfit(m_genotype, newdata=df_Genotype)) %>%
 
 # total overview axon vs. dendrite by Branchtypes and Genotype
 B2 <- lifetime_scatter(filter(total, Location != "Unclear"), Location) +
-  #scale_color_viridis_d()
   scale_color_scico_d(palette = sci_pal, begin = 0.25, end = 0.5)
 
 
@@ -309,7 +307,6 @@ CI_location <- tidy(survfit(m_location, newdata=df_Location)) %>%
 
 # total overview axon vs. dendrite by Branchtypes and Genotype
 (C2 <- lifetime_scatter(total, Branchtype) +
-  #scale_color_viridis_d()
   scale_color_scico_d(palette = sci_pal2, begin = 0, end = 1))
 
 
@@ -332,7 +329,7 @@ CI_type <- tidy(survfit(m_branchtype, newdata=df_type)) %>%
 
 
 # Load DAG .png files
-A4 <- ggdraw() + draw_image(file.path("figures", "figure_1","PRG2.png"), scale = 0.9)
+A4 <- ggdraw() + draw_image(file.path("figures", "figure_1","PLPPR3.png"), scale = 0.9)
 B4 <- ggdraw() + draw_image(file.path("figures", "figure_1","Location.png"), scale = 0.9)
 C4 <- ggdraw() + draw_image(file.path("figures", "figure_1","Type.png"), scale = 0.9)
 
@@ -351,7 +348,7 @@ Fig_1 <- plot_grid(A, B, C, nrow = 3, rel_heights = c(1, 1, 1.2))
 
 
 
-ggsave(file.path("figures", "figure_1", "Fig_1.png"), Fig_1, device = "png", scale = 1, width = 210, height = 210, units = "mm" )
+ggsave(file.path("figures", "figure_1", "Fig_1_raw.png"), Fig_1, device = "png", scale = 1, width = 210, height = 210, units = "mm" )
 
 ggsave(file.path("figures", "figure_1", "Fig_1.pdf"), Fig_1, device = "pdf", scale = 1, width = 210, height = 210, units = "mm" )
 

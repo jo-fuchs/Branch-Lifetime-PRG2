@@ -18,7 +18,6 @@ source("cumulative_branches.R")
 
 # load data
 total <- clean_data()
-#total_filt <- total %>% filter(Location != "Unclear")
 
 
 ## Statistics ----
@@ -78,7 +77,7 @@ survminer::ggcoxdiagnostics(m_combined, type = "deviance", linear.predictions = 
 # Results table
 tidy(m_combined, exponentiate = T)
 
-# results do not change with mixed model
+# hazard estimates do not change with mixed model, the p-values are lower but still significant at same comparisons
 summary(me_combined)
 
 
@@ -87,10 +86,8 @@ summary(me_combined)
 ## Plotting setup ----
 Branchtheme <- theme_minimal() +
   theme(plot.title = element_text(face = "bold"),
-        legend.position = "none", #legend.justification = "top", 
+        legend.position = "none", 
         panel.grid.minor.x = element_blank(), panel.grid.minor.y = element_blank()
-        #panel.grid.major.x = element_blank(),
-        #text = element_text(family = "Source Sans Pro")
   )
 
 
@@ -117,6 +114,7 @@ formations_plot <- function(data) {
     theme(panel.grid.major.x = element_blank(),
           legend.position = c(0.5, 0.49), legend.direction = "horizontal",
           legend.key.size = unit(10, "pt"),
+          plot.title = element_text(hjust = 0.5)
           #legend.margin = margin(0,1,0,1, unit = "cm")
     ) +
     scale_x_discrete(labels = c("", "", "6h", "", "", "12 h", "", "", "18 h", "", "", "24 h")) +
@@ -129,8 +127,8 @@ formations_plot <- function(data) {
     ) 
 }
 
-# Cumulative branches
 
+# Cumulative branches
 cumulative_plot <- function(data) {
 ggplot({{data}}, 
        aes(x = Bins, y = Accumulated_normalized, fill = Branchtype)) +
@@ -142,6 +140,7 @@ ggplot({{data}},
   theme(panel.grid.major.x = element_blank(),
         legend.position = c(0.5, 0.49), legend.direction = "horizontal",
         legend.key.size = unit(10, "pt"),
+        plot.title = element_text(hjust = 0.5)
         #legend.margin = margin(0,1,0,1, unit = "cm")
         ) +
     scale_x_discrete(labels = c("", "", "6h", "", "", "12 h", "", "", "18 h", "", "", "24 h")) +
@@ -153,6 +152,7 @@ ggplot({{data}},
     fill = ""
   ) 
 }
+
 
 # Events per group Scatter
 events_scatter <- function(data) {
@@ -199,10 +199,9 @@ survival_CI <- function(data) {
 
 
 #Selfmade_facet_grid
-
 CI_data <- function(loc, btype) {
 
-df_AxFil  <- data.frame(Genotype = factor(c("WT", "KO"), levels=levels(total$Genotype)),
+df_AxFil  <- data.frame(Genotype = factor(c("Plppr3 +/+", "Plppr3 -/-"), levels=levels(total$Genotype)),
                            Location = factor(c(loc, loc), levels = levels(total$Location)),
                            Branchtype = factor(c(btype, btype), levels = levels(total$Branchtype))) 
 
@@ -210,7 +209,7 @@ CI_AxFil <- tidy(survfit(m_combined, newdata = df_AxFil)) %>%
   pivot_longer(!time:n.censor,
                names_to = c(".value", "set"),
                names_pattern = "(.+).(.+)$") %>% 
-  mutate(set = fct_recode(set, WT = "1", KO = "2")) # rename to WT & KO
+  mutate(set = fct_recode(set, "Plppr3 +/+" = "1", "Plppr3 -/-" = "2")) # rename to WT & KO
 
 survival_CI(CI_AxFil) +  
     scale_color_scico_d(palette = sci_pal, begin = 0, end = 0.7) + 
@@ -238,10 +237,12 @@ survival_CI(CI_AxFil) +
 Cumulative <- cumulative_branches(total)
 
 (A0 <- formations_plot(filter(Cumulative, Location != "Unclear"))+
+    labs(title = "Initiations of branches over time") +
     scale_color_scico_d(palette = sci_pal2, begin = 0, end = 1) + 
     scale_fill_scico_d(palette = sci_pal2, begin = 0, end = 1))
 
 (A <- cumulative_plot(filter(Cumulative, Location != "Unclear")) +
+    labs(title = "Accumulation of branches over time") +
     scale_color_scico_d(palette = sci_pal2, begin = 0, end = 1) + 
     scale_fill_scico_d(palette = sci_pal2, begin = 0, end = 1))
 
@@ -251,14 +252,14 @@ Cumulative <- cumulative_branches(total)
 B <- events_scatter(count_exp) +
   stat_pvalue_manual(m0_combined, label = "p.signif", 
                      y = 2.2, tip.length = 0, hide.ns = T) +
+  labs(title = "Formation of branches by precursor") +
   scale_color_scico_d(palette = sci_pal, begin = 0, end = 0.7) + 
   scale_fill_scico_d(palette = sci_pal, begin = 0, end = 0.7)
 
 
 
 # C) DAG 
-C_up <- ggdraw() + draw_image(file.path("figures", "figure_2","combined_DAG_vert.png"), scale = 0.7)
-
+C <- ggdraw() + draw_image(file.path("figures", "figure_2","combined_DAG.png"), scale = 0.7)
 
 
 ## Survival analysis
@@ -289,22 +290,26 @@ D <- plot_grid(D1, D2, nrow = 2, align = "v", axis = "bt", rel_heights = c(1.1,1
 
 ## Merge into final figure
 top <- plot_grid(A0, A, ncol = 2, labels = c("A", "B"))
-mid <- plot_grid(B, C_up, ncol = 2, labels = c("C", "D"), rel_widths = c(1.5,1))
+mid <- plot_grid(B, C, ncol = 2, labels = c("C", "D"), rel_widths = c(1.5,1))
 
 spacer <- ggplot() + Branchtheme
 
-Fig_2 <- plot_grid(top, mid, spacer, D, nrow = 4, labels = c("", "", "E"), rel_heights = c(1.1,1, 0.05, 1)) 
+title <- ggplot() + Branchtheme + 
+  labs(title = "Multifactorial survival analysis including Genotype, Precursor and Location") +
+  theme( plot.title = element_text(hjust = 0.5))
+
+Fig_2 <- plot_grid(top, mid, spacer, title, D, nrow = 5, labels = c("", "", "E"), rel_heights = c(1.1,1, 0.05, 0.05, 1)) 
 
 
 
-ggsave(file.path("figures", "figure_2", "Fig_2.png"), Fig_2, device = "png", scale = 1, width = 210, height = 240, units = "mm" )
-
+ggsave(file.path("figures", "figure_2", "Fig_2_raw.png"), Fig_2, device = "png", scale = 1, width = 210, height = 240, units = "mm" )
+ggsave(file.path("figures", "figure_2", "Fig_2.pdf"), Fig_2, device = "pdf", scale = 1, width = 210, height = 240, units = "mm" )
 
 
 
 ## Forestplot of final model
 forest <- survminer::ggforest(m_combined, data = total)
-ggsave(file.path("figures", "supplement", "Sup_3.png"), forest, device = "png", scale = 1, width = 210, height = 140, units = "mm" )
-
+ggsave(file.path("figures", "supplement", "Sup_3_raw.png"), forest, device = "png", scale = 1, width = 210, height = 140, units = "mm" )
+ggsave(file.path("figures", "supplement", "Sup_3.pdf"), forest, device = "pdf", scale = 1, width = 210, height = 140, units = "mm" )
 
 
