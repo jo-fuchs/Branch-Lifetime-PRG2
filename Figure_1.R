@@ -11,7 +11,7 @@ library(scales)
 library(ggpubr)
 library(cowplot)
 
-source("clean_data.R")
+source(file.path("functions_dataset_1" , "clean_data.R"))
 
 
 # load data
@@ -31,54 +31,55 @@ mean_lifetime_by_experiment <- function(total_data, by_column) {
 }
 
 
-## raw lifetimes not accounting for right-censoring of data --
+## raw lifetimes not accounting for right-censoring of data - not included in paper anymore -
 
 ## A) Genotype --
 # Mean lifetime per experiment
-genotype_exp <- mean_lifetime_by_experiment(total, Genotype)
+# genotype_exp <- mean_lifetime_by_experiment(total, Genotype)
+# 
+# 
+# # Testing model assumptions
+# m0_geno <- aov(Lifetime ~ Genotype, data = genotype_exp)
+# autoplot(m0_geno, which = 1:4, ncol = 2, label.size = 3, colour = "Genotype")
+# shapiro.test(m0_geno$residuals)
+# car::leveneTest(m0_geno)
+# 
+# # Testing with Welch's test (non-equal variances)
+# m0_genotype <- compare_means(Lifetime ~ Genotype, 
+#                              data = genotype_exp, method = "t.test")
+# 
 
-
-# Testing model assumptions
-m0_geno <- aov(Lifetime ~ Genotype, data = genotype_exp)
-autoplot(m0_geno, which = 1:4, ncol = 2, label.size = 3, colour = "Genotype")
-
-
-# Testing with Welch's test (non-equal variances)
-m0_genotype <- compare_means(Lifetime ~ Genotype, 
-                             data = genotype_exp, method = "t.test")
-
-
-
-## E) Location --
-location_exp <- mean_lifetime_by_experiment(total, Location)
-
-
-# Testing model assumptions
-m0_loc <- aov(Lifetime ~ Location, data = location_exp)
-autoplot(m0_loc, which = 1:4, ncol = 2, label.size = 3, colour = "Location")
-
-
-# Testing with Welch's test (non-equal variances)
-m0_location <- compare_means(Lifetime ~ Location, 
-                               data = filter(location_exp, Location != "Unclear"), method = "t.test")
-
-
-
-## I) Branchtype --
-branchtype_exp <- mean_lifetime_by_experiment(total, Branchtype)
-
-
-# Testing model assumptions
-m0_btype <- aov(Lifetime ~ Branchtype, data = branchtype_exp)
-autoplot(m0_btype, which = 1:4, ncol = 2, label.size = 3, colour = "Branchtype")
-
-
-# Post Hoc comparisons: pairwise Welch's test (non-equal variances)
-m0_branchtype <- compare_means(Lifetime ~ Branchtype, 
-                               data = branchtype_exp, method = "t.test", 
-                               p.adjust.method = "holm")
-
-
+# not performed anymore
+# ## E) Location --
+# location_exp <- mean_lifetime_by_experiment(total, Location)
+# 
+# 
+# # Testing model assumptions
+# m0_loc <- aov(Lifetime ~ Location, data = location_exp)
+# autoplot(m0_loc, which = 1:4, ncol = 2, label.size = 3, colour = "Location")
+# 
+# 
+# # Testing with Welch's test (non-equal variances)
+# m0_location <- compare_means(Lifetime ~ Location, 
+#                                data = filter(location_exp, Location != "Unclear"), method = "t.test")
+# 
+# 
+# 
+# ## I) Branchtype --
+# branchtype_exp <- mean_lifetime_by_experiment(total, Branchtype)
+# 
+# 
+# # Testing model assumptions
+# m0_btype <- aov(Lifetime ~ Branchtype, data = branchtype_exp)
+# autoplot(m0_btype, which = 1:4, ncol = 2, label.size = 3, colour = "Branchtype")
+# 
+# 
+# # Post Hoc comparisons: pairwise Welch's test (non-equal variances)
+# m0_branchtype <- compare_means(Lifetime ~ Branchtype, 
+#                                data = branchtype_exp, method = "t.test", 
+#                                p.adjust.method = "holm")
+# 
+# 
 
 
 ### Survival analysis
@@ -114,7 +115,7 @@ tidy(m_location, exponentiate = T)
 
 
 
-## K) Branchtype --
+## K) Branchtype -- (now moved to Figure 2)
 m_branchtype <-  coxph(Surv(Lifetime, CompleteData) ~ Branchtype,
                       weights = Prob,
                       data = total)
@@ -158,27 +159,29 @@ sci_pal2 <- "roma"
 # Lifetime beeswarm superplot 
 # Lord, SL et al. (2020) SuperPlots: Communicating reproducibility and variability in cell biology. 
 # J Cell Biol 1 June 2020; doi: https://doi.org/10.1083/jcb.202001064)
-
-lifetime_swarm <- function(per_exp, total, X_axis) {
-  ggplot(per_exp, aes(x = {{X_axis}}, y = 1/Lifetime, color = {{X_axis}})) +  # 1/Lifetime to reverse normalization for stats
-  geom_point() + 
-
-  stat_summary(fun = mean, geom = "crossbar", color = "black", width = 0.6, size = 0.3) + 
-  stat_summary(fun.data = "mean_se", geom = "errorbar", color = "black", width = 0.4, size = 0.3) + 
-    
-  geom_quasirandom(aes(y = Lifetime), data = {{total}}, alpha = 0.01, shape = 16) + # non-collapsing
-  Branchtheme + theme(panel.grid.major.x = element_blank(), 
-  ) + 
-  
-  scale_y_continuous(breaks = c(0, 6, 12, 18, 24), 
-                         labels = c("0 h", "6 h", "12 h", "18 h", "24 h")) +
-    
-  labs(
-    x = "",
-    y = "Lifetime per branch"
-  )
-  }
-
+#
+### plot not included anymore
+# 
+# lifetime_swarm <- function(per_exp, total, X_axis) {
+#   ggplot(per_exp, aes(x = {{X_axis}}, y = 1/Lifetime, color = {{X_axis}})) +  # 1/Lifetime to reverse normalization for stats
+#   geom_point() + 
+# 
+#   stat_summary(fun = mean, geom = "crossbar", color = "black", width = 0.6, size = 0.3) + 
+#   stat_summary(fun.data = "mean_se", geom = "errorbar", color = "black", width = 0.4, size = 0.3) + 
+#     
+#   geom_quasirandom(aes(y = Lifetime), data = {{total}}, alpha = 0.01, shape = 16) + # non-collapsing
+#   Branchtheme + theme(panel.grid.major.x = element_blank(), 
+#   ) + 
+#   
+#   scale_y_continuous(breaks = c(0, 6, 12, 18, 24), 
+#                          labels = c("0 h", "6 h", "12 h", "18 h", "24 h")) +
+#     
+#   labs(
+#     x = "",
+#     y = "Lifetime per branch"
+#   )
+#   }
+# 
 
 # Scatterplot highlighting each indiviual branch event, colored by specified column
 lifetime_scatter <- function(total, Group) {
@@ -227,16 +230,16 @@ survival_CI <- function(data) {
 
 ## A: WT vs. KO -----
 
-# lifetime beeswarm
-
-A1 <- lifetime_swarm(genotype_exp, total, Genotype) +
-  
-  stat_pvalue_manual(m0_genotype, label = "p.signif", 
-                     y = 23, tip.length = 0) +
-  
-  scale_color_scico_d(palette = sci_pal, begin = 0, end = 0.7)
-
-
+# lifetime beeswarm -- not included anymore
+# 
+# A1 <- lifetime_swarm(genotype_exp, total, Genotype) +
+#   
+#   stat_pvalue_manual(m0_genotype, label = "p.signif", 
+#                      y = 23, tip.length = 0) +
+#   
+#   scale_color_scico_d(palette = sci_pal, begin = 0, end = 0.7)
+# 
+# 
 
 # total overview axon vs. dendrite by Branchtypes and Genotype
 A2 <- lifetime_scatter(total, Genotype) +
@@ -261,14 +264,14 @@ CI_genotype <- tidy(survfit(m_genotype, newdata=df_Genotype)) %>%
 )
 
 
-## Location ----
-
-(B1 <- lifetime_swarm(filter(location_exp, Location != "Unclear"), 
-               filter(total, Location != "Unclear"), 
-               Location) +
-   stat_pvalue_manual(m0_location, label = "p.signif", 
-                      y = 23, tip.length = 0) +
-  scale_color_scico_d(palette = sci_pal, begin = 0.25, end = 0.5))
+## Neurite type ----
+# # not included anymore
+# (B1 <- lifetime_swarm(filter(location_exp, Location != "Unclear"), 
+#                filter(total, Location != "Unclear"), 
+#                Location) +
+#    stat_pvalue_manual(m0_location, label = "p.signif", 
+#                       y = 23, tip.length = 0) +
+#   scale_color_scico_d(palette = sci_pal, begin = 0.25, end = 0.5))
 
 # total overview axon vs. dendrite by Branchtypes and Genotype
 B2 <- lifetime_scatter(filter(total, Location != "Unclear"), Location) +
@@ -294,18 +297,19 @@ CI_location <- tidy(survfit(m_location, newdata=df_Location)) %>%
 
 
 ## Branchtype ----
+# not included anymore
+# 
+# (C1 <- lifetime_swarm(branchtype_exp, 
+#                total, 
+#                Branchtype) +
+#   stat_pvalue_manual(m0_branchtype, label = "p.signif", 
+#                      y = c(21, 22.5, 24, 18, 19.5 ), tip.length = 0, hide.ns = T) +
+# 
+#     scale_color_scico_d(palette = sci_pal2, begin = 0, end = 1) +
+#     theme(axis.text.x = element_text(angle = 45, hjust = 1))
+#  )
 
-(C1 <- lifetime_swarm(branchtype_exp, 
-               total, 
-               Branchtype) +
-  stat_pvalue_manual(m0_branchtype, label = "p.signif", 
-                     y = c(21, 22.5, 24, 18, 19.5 ), tip.length = 0, hide.ns = T) +
-
-    scale_color_scico_d(palette = sci_pal2, begin = 0, end = 1) +
-    theme(axis.text.x = element_text(angle = 45, hjust = 1))
- )
-
-# total overview axon vs. dendrite by Branchtypes and Genotype
+# total overview axon vs. dendrite by Branchtypes (now Figure 2)
 (C2 <- lifetime_scatter(total, Branchtype) +
   scale_color_scico_d(palette = sci_pal2, begin = 0, end = 1))
 
@@ -335,14 +339,15 @@ C4 <- ggdraw() + draw_image(file.path("figures", "figure_1","Type.png"), scale =
 
 
 ## Merge it in one figure ----
-A <- plot_grid(A1, A2, A3c, A4, scale = 0.9, labels = c("A", "B", "C", "D"), 
-               rel_widths = c(1.5, 2, 2, 1), nrow = 1, align = "h", axis = "bt")
+A <- plot_grid(A2, A3c, A4, scale = 0.9, labels = c("A", "B", "C"), 
+               rel_widths = c(2, 2, 1), nrow = 1, align = "h", axis = "bt")
 
-B <- plot_grid(B1, B2, B3c, B4, scale = 0.9, labels = c("E", "F", "G", "H"), 
-               rel_widths = c(1.5, 2, 2, 1), nrow = 1, align = "h", axis = "bt")
+B <- plot_grid(B2, B3c, B4, scale = 0.9, labels = c("D", "E", "F"), 
+               rel_widths = c(2, 2, 1), nrow = 1, align = "h", axis = "bt")
 
-C <- plot_grid(C1, C2, C3c, C4, scale = 0.9, labels = c("I", "J", "K", "L"), 
-               rel_widths = c(1.5, 2, 2, 1), nrow = 1, align = "h", axis = "bt")
+# now Figure 2
+C <- plot_grid(C2, C3c, C4, scale = 0.9, labels = c("G", "H", "I"), 
+               rel_widths = c(2, 2, 1), nrow = 1, align = "h", axis = "bt")
 
 Fig_1 <- plot_grid(A, B, C, nrow = 3, rel_heights = c(1, 1, 1.2))
 

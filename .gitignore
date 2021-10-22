@@ -3,5 +3,7 @@
 .RData
 .Ruserdata
 *.csv
-!data/Cells.csv!
-!data/Individual_branches.csv
+!data/dataset_1/Cells.csv!
+!data/dataset_1/Individual_branches.csv
+!data/dataset_2/Cells.csv!
+!data/dataset_2/Individual_branches.csv

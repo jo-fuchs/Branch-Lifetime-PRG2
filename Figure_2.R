@@ -1,4 +1,5 @@
 # Figure 2
+## now Figure 3
 
 library(tidyverse)
 library(survival)
@@ -13,8 +14,9 @@ library(ggpubr)
 library(cowplot)
 
 
-source("clean_data.R")
-source("cumulative_branches.R")
+source(file.path("functions_dataset_1" , "clean_data.R"))
+source(file.path("functions_dataset_1" , "cumulative_branches.R"))
+
 
 # load data
 total <- clean_data()
@@ -27,18 +29,20 @@ count_exp <- total %>%
   group_by(Branchtype, Culture, Genotype, CellSum) %>% 
   summarise(events = n(),
             Neurons = sum(unique(Neurons))) %>% 
-  mutate(norm_events = events/Neurons ) %>% 
+  mutate(norm_events = events/Neurons,
+         tf_norm_events = sqrt(norm_events)) %>%  # to reach normality
   ungroup()
 
 
 
 # Testing model assumptions
-m0_comb <- aov(norm_events ~ Genotype, data = count_exp)
+m0_comb <- aov(tf_norm_events ~ Genotype, data = count_exp)
 autoplot(m0_comb, which = 1:4, ncol = 2, label.size = 3, color = Genotype)
-
+shapiro.test(m0_comb$residuals)
+car::leveneTest(m0_comb)
 
 # Welchs's t-test 
-m0_combined <- compare_means(norm_events ~ Genotype, group.by = "Branchtype", 
+m0_combined <- compare_means(tf_norm_events ~ Genotype, group.by = "Branchtype", 
                              data = count_exp, method = "t.test", p.adjust.method = "holm")
 
 
@@ -50,24 +54,14 @@ m_combined <- coxph(Surv(Lifetime, CompleteData) ~
                     weights = Prob,
                     data = total)
 
-m_combined_interaction <- coxph(Surv(Lifetime, CompleteData) ~ 
-                      Branchtype * Location + Genotype,
-                    weights = Prob,
-                    data = total)
 
-# mixed effect version
+# mixed effect version 
 me_combined <- coxme(Surv(Lifetime, CompleteData) ~ 
                       Branchtype + Location + Genotype + (1|Culture),
                     weights = Prob,
                     data = total)
 
 
-
-# no interaction terms required
-anova(m_combined, m_combined_interaction)
-
-# mixed effects model a better fit
-anova(m_combined, me_combined)
 
 # Diagnostics
 diag_surv_combined<- cox.zph(m_combined)
@@ -247,7 +241,7 @@ Cumulative <- cumulative_branches(total)
     scale_fill_scico_d(palette = sci_pal2, begin = 0, end = 1))
 
 
-# B) Branching events by type
+# B) Branching events by type (now supplementary S1B)
 
 B <- events_scatter(count_exp) +
   stat_pvalue_manual(m0_combined, label = "p.signif", 
@@ -286,11 +280,13 @@ D2 <- plot_grid(NeuFil, NeuMix, NeuLam, NeuSpl, scale = 1,
 
 D <- plot_grid(D1, D2, nrow = 2, align = "v", axis = "bt", rel_heights = c(1.1,1)) 
 
+## Forestplot of final model
+forest <- survminer::ggforest(m_combined, data = total)
 
 
 ## Merge into final figure
 top <- plot_grid(A0, A, ncol = 2, labels = c("A", "B"))
-mid <- plot_grid(B, C, ncol = 2, labels = c("C", "D"), rel_widths = c(1.5,1))
+mid <- plot_grid(C, forest, ncol = 2, labels = c("C", "D"), rel_widths = c(1,3))
 
 spacer <- ggplot() + Branchtheme
 
@@ -307,9 +303,8 @@ ggsave(file.path("figures", "figure_2", "Fig_2.pdf"), Fig_2, device = "pdf", sca
 
 
 
-## Forestplot of final model
-forest <- survminer::ggforest(m_combined, data = total)
-ggsave(file.path("figures", "supplement", "Sup_3_raw.png"), forest, device = "png", scale = 1, width = 210, height = 140, units = "mm" )
-ggsave(file.path("figures", "supplement", "Sup_3.pdf"), forest, device = "pdf", scale = 1, width = 210, height = 140, units = "mm" )
+
+ggsave(file.path("figures", "supplement", "Sup_1B_raw.png"), B, device = "png", scale = 1, width = 160, height = 80, units = "mm" )
+ggsave(file.path("figures", "supplement", "Sup_1B.pdf"), B, device = "pdf", scale = 1, width = 160, height = 80, units = "mm" )
 
 
